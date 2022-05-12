@@ -10,7 +10,7 @@ import "tum_rva.core_desc"
 import "tum_rvm.core_desc"
 
 
-Core RV32IMACFDPV provides RV32I, RV32IC, RV32M, RV32V, RV32F, RV32FC, RV32D, RV32DC, Zifencei, tum_csr, tum_ret, tum_rva, tum_semihosting {
+Core RV32IMACFDPV provides RV32I, RV32IC, RV32M, RV32V, RV32F, RV32FC, RV32D, RV32DC, RV32V, Zifencei, tum_csr, tum_ret, tum_rva, tum_semihosting {
     architectural_state {
         CSR[0x000] = 0x0000000B; // ustatus
         CSR[RV_CSR_SSTATUS] = 0x0000000B; // sstatus
