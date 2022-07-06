@@ -1,7 +1,7 @@
 import "rv_base/RISCVBase.core_desc"
 import "rv_base/RVI.core_desc"
 
-InstructionSet tum_ret extends RISCVBase {
+InstructionSet tum_ret extends riscv_encoding, RISCVBase {
     architectural_state {
         signed<32> ETISS_RETURNCODE_NOERROR = 0;
         signed<32> ETISS_RETURNCODE_GENERALERROR = -1;

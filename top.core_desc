@@ -21,8 +21,7 @@ Core RV32IMACFDPV provides RV32I, RV32IC, RV32M, RV32V, RV32F, RV32FC, RV32D, RV
         CSR[0x300] |= MSTATUS_VS; // enable vpu
 
         CSR[RV_CSR_MISA] = 0x4014112D; // misa
-
-        CSR[0xC10] = 0x00000003;
+        CSR[0xC10] = 0x00000003; // ?
 
         CSR[RV_CSR_MIE] = 0xFFFFFBBB; // mie
         CSR[RV_CSR_SIE] = CSR[0x304] & (~(0x888)); // sie
@@ -43,7 +42,7 @@ Core RV64IMACFD provides RV64I, RV64IC, RV64M, RV64F, RV64D, RV32DC, RV64A, Zife
 
         CSR[RV_CSR_MISA] = 0x800000000014112D; // misa
 
-        CSR[0xC10] = 0x00000003;
+        CSR[0xC10] = 0x00000003; // ?
 
         CSR[RV_CSR_MIE] = 0xFFFFFBBB; // mie
         CSR[RV_CSR_SIE] = CSR[0x304] & (~(0x888)); // sie
