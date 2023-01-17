@@ -2,7 +2,7 @@ import "rv_base/RISCVBase.core_desc"
 import "rv_base/RV32I.core_desc"
 import "rv_base/RVA.core_desc"
 
-InstructionSet tum_ret extends riscv_encoding, RISCVBase {
+InstructionSet tum_ret extends RISCVBase {
     architectural_state {
         signed<32> ETISS_RETURNCODE_NOERROR = 0;
         signed<32> ETISS_RETURNCODE_GENERALERROR = -1;
@@ -38,114 +38,165 @@ InstructionSet tum_ret extends riscv_encoding, RISCVBase {
         signed<32> ETISS_RETURNCODE_TEMPORARY5 = -133;
         signed<32> ETISS_RETURNCODE_TEMPORARY6 = -134;
         signed<32> ETISS_RETURNCODE_TEMPORARY7 = -135;
-
-        signed<32> RV_MISALIGNED_FETCH = 0x00;
-        signed<32> RV_FETCH_ACCESS = 0x01;
-        signed<32> RV_ILLEGAL_INSTRUCTION = 0x02;
-        signed<32> RV_BREAKPOINT = 0x03;
-        signed<32> RV_MISALIGNED_LOAD = 0x04;
-        signed<32> RV_LOAD_ACCESS = 0x05;
-        signed<32> RV_MISALIGNED_STORE = 0x06;
-        signed<32> RV_STORE_ACCESS = 0x07;
-        signed<32> RV_USER_ECALL = 0x08;
-        signed<32> RV_SUPERVISOR_ECALL = 0x09;
-        signed<32> RV_VIRTUAL_SUPERVISOR_ECALL = 0x0A;
-        signed<32> RV_MACHINE_ECALL = 0x0B;
-        signed<32> RV_FETCH_PAGE_FAULT = 0x0C;
-        signed<32> RV_LOAD_PAGE_FAULT = 0x0D;
-        signed<32> RV_STORE_PAGE_FAULT = 0x0F;
-        signed<32> RV_FETCH_GUEST_PAGE_FAULT = 0x14;
-        signed<32> RV_LOAD_GUEST_PAGE_FAULT = 0x15;
-        signed<32> RV_VIRTUAL_INSTRUCTION = 0x16;
-        signed<32> RV_STORE_GUEST_PAGE_FAULT = 0x17;
     }
 
     functions {
-        signed<32> raise(int irq, int mcause) [[etiss_exc_entry]] {
-            if (irq != 0) {
-                return ETISS_RETURNCODE_INTERRUPT;
-            } else {
-                if (mcause == RV_MISALIGNED_FETCH || mcause == RV_FETCH_ACCESS) return ETISS_RETURNCODE_IBUS_READ_ERROR;
-                if (mcause == RV_ILLEGAL_INSTRUCTION) return ETISS_RETURNCODE_ILLEGALINSTRUCTION;
-                if (mcause == RV_BREAKPOINT) return ETISS_RETURNCODE_BREAKPOINT;
-                if (mcause == RV_MISALIGNED_LOAD || mcause == RV_LOAD_ACCESS) return ETISS_RETURNCODE_DBUS_READ_ERROR;
-                if (mcause == RV_MISALIGNED_STORE || mcause == RV_STORE_ACCESS) return ETISS_RETURNCODE_DBUS_WRITE_ERROR;
-                if (mcause == RV_USER_ECALL || mcause == RV_SUPERVISOR_ECALL || mcause == RV_VIRTUAL_SUPERVISOR_ECALL || mcause == RV_MACHINE_ECALL) return ETISS_RETURNCODE_SYSCALL;
-                if (mcause == RV_FETCH_PAGE_FAULT || mcause == RV_FETCH_GUEST_PAGE_FAULT) return ETISS_RETURNCODE_INSTR_PAGEFAULT;
-                if (mcause == RV_LOAD_PAGE_FAULT || mcause == RV_LOAD_GUEST_PAGE_FAULT) return ETISS_RETURNCODE_LOAD_PAGEFAULT;
-                if (mcause == RV_STORE_PAGE_FAULT || mcause == RV_STORE_GUEST_PAGE_FAULT) return ETISS_RETURNCODE_STORE_PAGEFAULT;
-                return ETISS_RETURNCODE_ILLEGALINSTRUCTION;
+        unsigned<64> get_field(unsigned<64> reg, unsigned<64> mask) {
+            return (reg & mask) / (mask & ~(mask << 1));
+        }
+
+        unsigned<64> set_field(unsigned<64> reg, unsigned<64> mask, unsigned<64> val) {
+            return ((reg & ~mask) | ((val * (mask & ~(mask << 1))) & mask));
+        }
+
+        void raise(int irq, int mcause) [[ etiss_exc_entry ]] {
+            unsigned<XLEN> epc = PC;
+
+            if (PRIV <= RV_PRV_S && (CSR[RV_CSR_MEDELEG] >> mcause) & 1) { // handle in S-MODE
+                PC = (CSR[RV_CSR_STVEC] & ~(unsigned<XLEN>)1);
+                CSR[RV_CSR_SEPC] = epc;
+                CSR[RV_CSR_SCAUSE] = mcause;
+
+                unsigned<XLEN> s = CSR[RV_CSR_SSTATUS];
+                s = set_field(s, RV_MSTATUS_SPIE, get_field(s, RV_MSTATUS_SIE));
+                s = set_field(s, RV_MSTATUS_SPP, PRIV);
+                s = set_field(s, RV_MSTATUS_SIE, 0);
+                CSR[RV_CSR_SSTATUS] = s;
+                PRIV = RV_PRV_S;
+            } else {    // handle in M-MODE
+                PC = (CSR[RV_CSR_MTVEC] & ~(unsigned<XLEN>)1);
+                CSR[RV_CSR_MEPC] = epc;
+                CSR[RV_CSR_MCAUSE] = mcause;
+
+                unsigned<XLEN> s = CSR[RV_CSR_MSTATUS];
+                s = set_field(s, RV_MSTATUS_MPIE, get_field(s, RV_MSTATUS_MIE));
+                s = set_field(s, RV_MSTATUS_MPP, PRIV);
+                s = set_field(s, RV_MSTATUS_MIE, 0);
+                CSR[RV_CSR_MSTATUS] = s;
+                PRIV = RV_PRV_M;
             }
+        }
+
+        void translate_exc_code(int cause) [[ etiss_mem_exc_entry=MEM ]] {
+            int code = 0;
+
+            if (cause == ETISS_RETURNCODE_CPUFINISHED) return;
+            else if (cause == ETISS_RETURNCODE_DBUS_READ_ERROR) code = RV_CAUSE_LOAD_ACCESS;
+            else if (cause == ETISS_RETURNCODE_LOAD_PAGEFAULT) code = RV_CAUSE_LOAD_PAGE_FAULT;
+            else if (cause == ETISS_RETURNCODE_DBUS_WRITE_ERROR) code = RV_CAUSE_STORE_ACCESS;
+            else if (cause == ETISS_RETURNCODE_STORE_PAGEFAULT) code = RV_CAUSE_STORE_PAGE_FAULT;
+            else if (cause == ETISS_RETURNCODE_IBUS_READ_ERROR) code = RV_CAUSE_FETCH_ACCESS;
+            else code = RV_CAUSE_ILLEGAL_INSTRUCTION;
+
+            raise(0, code);
         }
     }
 
-	instructions {
-        URET [[no_cont]] {
-            encoding: 0b0000000 :: 0b00010 :: 0b00000 :: 0b000 :: 0b00000 :: 0b1110011;
+    instructions {
+        MRET [[no_cont]] {
+            encoding: 7'b0011000 :: 5'b00010 :: 5'b00000 :: 3'b000 :: 5'b00000 :: 7'b1110011;
             behavior: {
-				CSR[3088] = 0;
-				CSR[0] ^= ((CSR[0] & 0x10) >> 4) ^ (CSR[0] & 0x01);
-				PC = CSR[65];
-				CSR[768] = CSR[0];
-				CSR[256] = CSR[0];
-			}
+                if (PRIV < RV_PRV_M)
+                    raise(0, RV_CAUSE_ILLEGAL_INSTRUCTION);
+
+                PC = CSR[RV_CSR_MEPC];
+
+                unsigned<XLEN> s = CSR[RV_CSR_MSTATUS];
+
+                unsigned<XLEN> prev_prv = get_field(s, RV_MSTATUS_MPP);
+
+                if (prev_prv != RV_PRV_M)
+                    s = set_field(s, RV_MSTATUS_MPRV, 0);
+
+                s = set_field(s, RV_MSTATUS_MIE, get_field(s, RV_MSTATUS_MPIE));
+                s = set_field(s, RV_MSTATUS_MPIE, 1);
+                s = set_field(s, RV_MSTATUS_MPP, extension_enabled('U') ? RV_PRV_U : RV_PRV_M);
+
+                CSR[RV_CSR_MSTATUS] = s;
+                PRIV = prev_prv;
+            }
         }
 
         SRET [[no_cont]] {
             encoding: 7'b0001000 :: 5'b00010 :: 5'b00000 :: 3'b000 :: 5'b00000 :: 7'b1110011;
             behavior: {
-				CSR[3088] = (CSR[256] & 0x100) >> 8;
-				CSR[256] ^= (CSR[256] & 0x100);
-				CSR[256] ^= ((CSR[256] & 0x20) >> 4) ^ (CSR[256] & 0x2);
-				PC = CSR[321];
-				CSR[768]= CSR[256];
-				CSR[0]=CSR[256];
-			}
-        }
+                if (PRIV < (get_field(CSR[RV_CSR_MSTATUS], RV_MSTATUS_TSR) ? RV_PRV_M : RV_PRV_S))
+                    raise(0, RV_CAUSE_ILLEGAL_INSTRUCTION);
 
-        MRET [[no_cont]] {
-            encoding: 7'b0011000 :: 5'b00010 :: 5'b00000 :: 3'b000 :: 5'b00000 :: 7'b1110011;
-            behavior: {
-				CSR[3088] = (CSR[768] & 0x1800) >> 11;
-				CSR[768] ^= (CSR[768] & 0x1800);
-				CSR[768] ^= ((CSR[768] & 0x80) >> 4) ^ (CSR[768] & 0x8);
-				PC = CSR[833];
-				CSR[0] = CSR[768];
-				CSR[256] = CSR[768];
-			}
+                PC = CSR[RV_CSR_SEPC];
+
+                unsigned<XLEN> s = CSR[RV_CSR_SSTATUS];
+
+                unsigned<XLEN> prev_prv = get_field(s, RV_MSTATUS_SPP);
+
+                s = set_field(s, RV_MSTATUS_SIE, get_field(s, RV_MSTATUS_SPIE));
+                s = set_field(s, RV_MSTATUS_SPIE, 1);
+                s = set_field(s, RV_MSTATUS_SPP, RV_PRV_U);
+
+                CSR[RV_CSR_MSTATUS] = s;
+                PRIV = prev_prv;
+            }
         }
-	}
+    }
 }
 
 InstructionSet tum_csr extends Zicsr {
-    architectural_state {
-        unsigned int FFLAGS_N = 0x001;
-        unsigned int FRM_N = 0x002;
-        unsigned int FCSR_N = 0x003;
-    }
-
     functions {
         extern unsigned<64> etiss_get_cycles() [[ etiss_needs_arch ]];
         extern unsigned<64> etiss_get_time();
         extern unsigned<64> etiss_get_instret() [[ etiss_needs_arch ]];
+
+        unsigned<XLEN> sstatus_mask() {
+            unsigned<XLEN> mask = 0;
+
+            if (extension_enabled('S')) {
+                mask |= 0 | (RV_MSTATUS_SIE | RV_MSTATUS_SPIE | RV_MSTATUS_SPP | RV_MSTATUS_MXR | RV_MSTATUS_TVM | RV_MSTATUS_TSR);
+
+                if (extension_enabled('V'))
+                    mask |= RV_MSTATUS_VS;
+
+                if (extension_enabled('F'))
+                    mask |= RV_MSTATUS_FS;
+
+                if (extension_enabled('X'))
+                    mask |= RV_MSTATUS_XS;
+
+                if (XLEN == 32 && get_field(CSR[RV_CSR_SATP], 1 << 31) || XLEN == 64 && get_field(CSR[RV_CSR_SATP], 15 << 60))
+                    mask |= RV_MSTATUS_SUM;
+            }
+
+            return mask;
+        }
+
+        unsigned<XLEN> mstatus_mask() {
+            unsigned<XLEN> mask = 0 | (RV_MSTATUS_MIE | RV_MSTATUS_MPIE | RV_MSTATUS_MPP);
+
+            return mask | sstatus_mask();
+        }
+
         unsigned<XLEN> csr_read(unsigned int csr) {
-            if (csr == FFLAGS_N) return CSR[FCSR_N] & 0x1F;
-            if (csr == FRM_N) return (CSR[FCSR_N] >> 5) & 0x07;
-            if (csr == CSR_CYCLE) return etiss_get_cycles();
-            if (csr == (CSR_CYCLE+128)) return etiss_get_cycles() >> 32;
-            if (csr == CSR_TIME) return etiss_get_time();
-            if (csr == (CSR_TIME+128)) return etiss_get_time() >> 32;
-            if (csr == CSR_INSTRET) return etiss_get_instret();
-            if (csr == (CSR_INSTRET+128)) return etiss_get_instret() >> 32;
+            if (csr == RV_CSR_FFLAGS) return CSR[RV_CSR_FCSR] & 0x1F;
+            if (csr == RV_CSR_FRM) return (CSR[RV_CSR_FCSR] >> 5) & 0x07;
+            if (csr == RV_CSR_CYCLE) return etiss_get_cycles();
+            if (csr == RV_CSR_CYCLEH) return etiss_get_cycles() >> 32;
+            if (csr == RV_CSR_TIME) return etiss_get_time();
+            if (csr == RV_CSR_TIMEH) return etiss_get_time() >> 32;
+            if (csr == RV_CSR_INSTRET) return etiss_get_instret();
+            if (csr == RV_CSR_INSTRETH) return etiss_get_instret() >> 32;
+            if (csr == RV_CSR_MSTATUS || csr == RV_CSR_SSTATUS) return CSR[RV_CSR_MSTATUS] | (RV_MSTATUS_UXL & (RV_MSTATUS_UXL << 1)) | (RV_MSTATUS_SXL & (RV_MSTATUS_SXL << 1));
+            if (csr == RV_CSR_MISA) return (unsigned<2>)(XLEN / 32) :: CSR[RV_CSR_MISA][XLEN - 2:0];
 
             return CSR[csr];
         }
 
         void csr_write(unsigned int csr, unsigned<XLEN> val) {
-            if (csr == FFLAGS_N) CSR[FCSR_N] = (CSR[FCSR_N] & (0x07 << 5)) | (val & 0x1F);
-            else if (csr == FRM_N) CSR[FCSR_N] = ((val & 0x07) << 5) | (CSR[FCSR_N] & 0x1F);
-            else if (csr == FCSR_N) CSR[FCSR_N] = val & 0xFF;
-            else CSR[csr] = val;
+            if (csr == RV_CSR_FFLAGS) CSR[RV_CSR_FCSR] = (CSR[RV_CSR_FCSR] & (0x07 << 5)) | (val & 0x1F);
+            else if (csr == RV_CSR_FRM) CSR[RV_CSR_FCSR] = ((val & 0x07) << 5) | (CSR[RV_CSR_FCSR] & 0x1F);
+            else if (csr == RV_CSR_FCSR) CSR[RV_CSR_FCSR] = val & 0xFF;
+            else if (csr == RV_CSR_MSTATUS) CSR[RV_CSR_MSTATUS] = val & mstatus_mask();
+            else if (csr == RV_CSR_SSTATUS) CSR[RV_CSR_MSTATUS] = val & sstatus_mask();
+
+            else if (csr != RV_CSR_MISA) CSR[csr] = val;
         }
     }
 
@@ -247,5 +298,63 @@ InstructionSet tum_rva extends RV32A {
                 RES_ADDR = -1;
             }
         }
+    }
+}
+
+InstructionSet tum_rva64 extends tum_rva {
+    instructions {
+        LRD {
+            encoding: 5'b00010 :: aq[0:0] :: rl[0:0]  :: 5'b00000 :: rs1[4:0] :: 3'b011 :: rd[4:0] :: 7'b0101111;
+            assembly: "{name(rd)}, {name(rs1)}, {name(aq)}, {name(rl)}";
+            behavior: {
+                unsigned<XLEN> offs = X[rs1 % RFS];
+                signed<64> res = (signed<64>)MEM[offs];
+                RES_ADDR = offs;
+                if (rd) X[rd % RFS] = (signed<XLEN>)res;
+            }
+        }
+
+        SCD {
+            encoding: 5'b00011 :: aq[0:0] :: rl[0:0] :: rs2[4:0] :: rs1[4:0] :: 3'b011 :: rd[4:0] :: 7'b0101111;
+            assembly: "{name(rd)}, {name(rs1)}, {name(rs2)}, {name(aq)}, {name(rl)}";
+            behavior: {
+                unsigned<XLEN> offs = X[rs1 % RFS];
+                if (RES_ADDR == offs) MEM[offs] = (signed<64>)X[rs2 % RFS];
+                if (rd) X[rd % RFS] = RES_ADDR != offs;
+                RES_ADDR = -1;
+            }
+        }
+    }
+}
+
+InstructionSet tum_semihosting extends RV32I {
+    instructions {
+        EBREAK [[no_cont]] [[cond]] {
+            encoding: 0b000000000001 :: 5'b00000 :: 3'b000 :: 5'b00000 :: 7'b1110011;
+            behavior: {
+                if (etiss_semihost_enabled()) {
+                    unsigned<32> pre    = (unsigned<32>)MEM[PC - 4];
+                    unsigned<32> ebreak = (unsigned<32>)MEM[PC + 0];
+                    unsigned<32> post   = (unsigned<32>)MEM[PC + 4];
+                    if ( pre    == 0x01f01013 // slli x0, x0, 0x1f   Entry NOP
+                      && ebreak == 0x00100073 // ebreak              Break to debugger
+                      && post   == 0x40705013 // srai x0, x0, 7      NOP encoding the semihosting call number 7
+                    ) {
+                    unsigned<XLEN> operation = X[10];
+                    unsigned<XLEN> parameter = X[11];
+                    X[10] = (signed<XLEN>)etiss_semihost(XLEN, operation, parameter);
+                    } else {
+                        raise(0, RV_CAUSE_BREAKPOINT);
+                    }
+                } else {
+                    raise(0, RV_CAUSE_BREAKPOINT);
+                }
+            }
+        }
+    }
+
+    functions {
+        extern unsigned<8> etiss_semihost_enabled();
+        extern signed<64> etiss_semihost(unsigned<32> XLEN, unsigned<64> operation, unsigned<64> parameter) [[etiss_needs_arch]];
     }
 }
