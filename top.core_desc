@@ -7,7 +7,6 @@ import "rv_base/RVF.core_desc"
 import "rv_base/RVP.core_desc"
 import "rv_base/RVV.core_desc"
 import "tum_mod.core_desc"
-import "encoding.core_desc"
 
 
 Core RV32IMACFDPV provides RV32I, RV32IC, RV32M, RV32F, RV32FC, RV32D, RV32DC, RV32P, RV32V, Zifencei, tum_ret, tum_csr, tum_rva, tum_semihosting {
@@ -17,8 +16,8 @@ Core RV32IMACFDPV provides RV32I, RV32IC, RV32M, RV32F, RV32FC, RV32D, RV32DC, R
         CSR[RV_CSR_SSTATUS] = 0x0000000B; // sstatus
         // TODO: Mirror mstatus to sstatus?
         CSR[RV_CSR_MSTATUS] = 0x0000000B; // mstatus
-        CSR[RV_CSR_MSTATUS] |= MSTATUS_FS; // enable fpu
-        CSR[RV_CSR_MSTATUS] |= MSTATUS_VS; // enable vpu
+        CSR[RV_CSR_MSTATUS] |= RV_MSTATUS_FS; // enable fpu
+        CSR[RV_CSR_MSTATUS] |= RV_MSTATUS_VS; // enable vpu
 
         CSR[RV_CSR_MISA] = 0x4014112D; // misa
 
