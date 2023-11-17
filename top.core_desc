@@ -5,6 +5,7 @@ import "rv_base/RVC.core_desc"
 import "rv_base/RVD.core_desc"
 import "rv_base/RVF.core_desc"
 import "rv_xcorev/XCoreV.core_desc"
+import "rv_xcorev/XCoreVHwlp.core_desc"
 import "tum_mod.core_desc"
 
 
@@ -40,7 +41,42 @@ Core RV64IMACFD provides RV64I, RV64IC, RV64M, RV64F, RV64D, RV32DC, RV64A, Zife
     }
 }
 
+// Without XCoreVHwlp!
 Core RV32IMACFDXCoreV provides RV32I, RV32IC, RV32M, RV32F, RV32FC, RV32D, RV32DC, Zifencei, XCoreV, tum_csr, tum_ret, tum_rva, tum_semihosting {
+    architectural_state {
+        CSR[0x000] = 0x0000000B; // ustatus
+        CSR[RV_CSR_SSTATUS] = 0x0000000B; // sstatus
+        CSR[RV_CSR_MSTATUS] = 0x0000000B; // mstatus
+
+        CSR[RV_CSR_MISA] = 0x4014112D; // misa
+
+        CSR[0xC10] = 0x00000003;
+
+        CSR[RV_CSR_MIE] = 0xFFFFFBBB; // mie
+        CSR[RV_CSR_SIE] = CSR[0x304] & (~(0x888)); // sie
+        CSR[0x004] = CSR[0x304] & (~(0xAAA)); // uie
+    }
+}
+
+// Without compressed!
+Core RV32IMAFDXCoreVHwlp provides RV32I, RV32M, RV32F, RV32D, Zifencei, XCoreV, XCoreVHwlp, tum_csr, tum_ret, tum_rva, tum_semihosting {
+    architectural_state {
+        CSR[0x000] = 0x0000000B; // ustatus
+        CSR[RV_CSR_SSTATUS] = 0x0000000B; // sstatus
+        CSR[RV_CSR_MSTATUS] = 0x0000000B; // mstatus
+
+        CSR[RV_CSR_MISA] = 0x4014112D; // misa
+
+        CSR[0xC10] = 0x00000003;
+
+        CSR[RV_CSR_MIE] = 0xFFFFFBBB; // mie
+        CSR[RV_CSR_SIE] = CSR[0x304] & (~(0x888)); // sie
+        CSR[0x004] = CSR[0x304] & (~(0xAAA)); // uie
+    }
+}
+
+// Without compressed! (old)
+Core RV32IMAFDXCoreVHwlpV0 provides RV32I, RV32M, RV32F, RV32D, Zifencei, XCoreV, XCoreVHwlpV0, tum_csr, tum_ret, tum_rva, tum_semihosting {
     architectural_state {
         CSR[0x000] = 0x0000000B; // ustatus
         CSR[RV_CSR_SSTATUS] = 0x0000000B; // sstatus
