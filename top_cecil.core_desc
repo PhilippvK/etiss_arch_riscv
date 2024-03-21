@@ -1,0 +1,42 @@
+import "rv_base/RV32I.core_desc"
+import "rv_base/RV64I.core_desc"
+import "rv_base/RVM.core_desc"
+import "rv_base/RVC.core_desc"
+import "rv_base/RVD.core_desc"
+import "rv_base/RVF.core_desc"
+import "tum_mod.core_desc"
+import "tum_rva.core_desc"
+import "tum_rvm.core_desc"
+import "all_v7.core_desc"
+
+Core RV32IMACFD provides RV32I, RV32IC, RV32M, RV32F, RV32FC, RV32D, RV32DC, Zifencei, tum_csr, tum_ret, tum_rva, tum_semihosting, Seal5Test_alu_cv_abs, Seal5Test_alu_cv_mini5_16, Seal5Test_alu_cv_mini5_32, Seal5Test_alu_cv_mini12_16, Seal5Test_alu_cv_mini12_32, Seal5Test_alu_cv_maxi5_16, Seal5Test_alu_cv_maxi5_32, Seal5Test_alu_cv_maxi12_16, Seal5Test_alu_cv_maxi12_32, Seal5Test_alu_cv_minu_i16, Seal5Test_alu_cv_mins_i16, Seal5Test_alu_cv_minu_i32, Seal5Test_alu_cv_mins_i32, Seal5Test_alu_cv_maxu_i16, Seal5Test_alu_cv_maxs_i16, Seal5Test_alu_cv_maxu_i32, Seal5Test_alu_cv_maxs_i32, Seal5Test_alu_cv_sletu_i16, Seal5Test_alu_cv_slets_i16, Seal5Test_alu_cv_sletu_i32, Seal5Test_alu_cv_slets_i32, Seal5Test_alu_cv_addNru_i16, Seal5Test_alu_cv_addNrs_i16, Seal5Test_alu_cv_addNru_i32, Seal5Test_alu_cv_addNrs_i32, Seal5Test_alu_cv_subNru_i16, Seal5Test_alu_cv_subNrs_i16, Seal5Test_alu_cv_subNru_i32, Seal5Test_alu_cv_subNrs_i32, Seal5Test_alu_cv_addRNru_i16, Seal5Test_alu_cv_addRNrs_i16, Seal5Test_alu_cv_addRNru_i32, Seal5Test_alu_cv_addRNrs_i32, Seal5Test_alu_cv_subRNru_i16, Seal5Test_alu_cv_subRNrs_i16, Seal5Test_alu_cv_subRNru_i32, Seal5Test_alu_cv_subRNrs_i32, Seal5Test_alu_cv_addNu, Seal5Test_alu_cv_addNs, Seal5Test_alu_cv_subNu, Seal5Test_alu_cv_subNs, Seal5Test_alu_cv_addRNu, Seal5Test_alu_cv_addRNs, Seal5Test_alu_cv_subRNu, Seal5Test_alu_cv_subRNs, Seal5Test_mac_cv_macu_i16, Seal5Test_mac_cv_macs_i16, Seal5Test_mac_cv_macu_i32, Seal5Test_mac_cv_macs_i32, Seal5Test_mac_cv_msuu_i16, Seal5Test_mac_cv_msus_i16, Seal5Test_mac_cv_msuu_i32, Seal5Test_mac_cv_msus_i32, Seal5Test_mac_cv_mulNu, Seal5Test_mac_cv_mulNs, Seal5Test_mac_cv_mulhhNu, Seal5Test_mac_cv_mulhhNs, Seal5Test_mac_cv_mulRNu, Seal5Test_mac_cv_mulRNs, Seal5Test_mac_cv_mulhhRNu, Seal5Test_mac_cv_mulhhRNs, Seal5Test_mac_cv_macNu, Seal5Test_mac_cv_macNs, Seal5Test_mac_cv_machhNu, Seal5Test_mac_cv_machhNs, Seal5Test_mac_cv_macRNu, Seal5Test_mac_cv_macRNs, Seal5Test_mac_cv_machhRNu, Seal5Test_mac_cv_machhRNs, Seal5Test_ext {
+    architectural_state {
+        CSR[0x000] = 0x0000000B; // ustatus
+        CSR[RV_CSR_SSTATUS] = 0x0000000B; // sstatus
+        CSR[RV_CSR_MSTATUS] = 0x0000000B; // mstatus
+
+        CSR[RV_CSR_MISA] = 0x4014112D; // misa
+
+        CSR[0xC10] = 0x00000003;
+
+        CSR[RV_CSR_MIE] = 0xFFFFFBBB; // mie
+        CSR[RV_CSR_SIE] = CSR[0x304] & (~(0x888)); // sie
+        CSR[0x004] = CSR[0x304] & (~(0xAAA)); // uie
+    }
+}
+
+// Core RV64IMACFD provides RV64I, RV64IC, RV64M, RV64F, RV64D, RV32DC, RV64A, Zifencei, tum_csr, tum_ret, tum_rva64, tum_rvm, tum_semihosting {
+//     architectural_state {
+//         CSR[0x000] = 0x0000000B; // ustatus
+//         CSR[RV_CSR_SSTATUS] = 0x0000000B; // sstatus
+//         CSR[RV_CSR_MSTATUS] = 0x0000000B; // mstatus
+//
+//         CSR[RV_CSR_MISA] = 0x800000000014112D; // misa
+//
+//         CSR[0xC10] = 0x00000003;
+//
+//         CSR[RV_CSR_MIE] = 0xFFFFFBBB; // mie
+//         CSR[RV_CSR_SIE] = CSR[0x304] & (~(0x888)); // sie
+//         CSR[0x004] = CSR[0x304] & (~(0xAAA)); // uie
+//     }
+// }
