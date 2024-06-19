@@ -14,10 +14,8 @@ Core RV32IMACFDPV provides RV32I, RV32IC, RV32M, RV32V, RV32F, RV32FC, RV32D, RV
         CSR[0x000] = 0x0000000B; // ustatus
         CSR[RV_CSR_SSTATUS] = 0x0000000B; // sstatus
         CSR[RV_CSR_MSTATUS] = 0x0000000B; // mstatus
-        // CSR[0x300] |= MSTATUS_FS; // enable fpu
-        // CSR[0x300] |= MSTATUS_VS; // enable vpu
-        CSR[0x300] |= MSTATUS_FS; // enable fpu
-        CSR[0x300] |= MSTATUS_VS; // enable vpu
+        CSR[0x300] |= RV_MSTATUS_FS; // enable fpu
+        CSR[0x300] |= RV_MSTATUS_VS; // enable vpu
 
         CSR[RV_CSR_MISA] = 0x4014112D; // misa
         CSR[0xC10] = 0x00000003; // ?
