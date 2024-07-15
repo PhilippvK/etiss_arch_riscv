@@ -24,6 +24,8 @@ Core RV32IMACFDV provides RV32I, RV32IC, RV32M, RV32V, RV32F, RV32FC, RV32D, RV3
         CSR[RV_CSR_SIE] = CSR[0x304] & (~(0x888)); // sie
         CSR[0x004] = CSR[0x304] & (~(0xAAA)); // uie
 
+        VLEN = 1024;
+        // VLEN = 128;
         CSR[VTYPE_ADDR] = 0x1 << (XLEN-1); // vtype.vill=1, otherwise zero
         CSR[VL_ADDR] = 0x0; // vl
         CSR[VLENB_ADDR] = VLEN / 8; // vlenb
